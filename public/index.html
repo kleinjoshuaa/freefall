@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Freefall</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <section class="world">
+        <canvas id="sky"></canvas>
+
+        <div class="overlay">
+          <div class="titles">
+            <h1 id="act">FREEFALL</h1>
+            <p id="sub">The agent writes the autopilot. The lander flies it.</p>
+          </div>
+
+          <div class="verdict" id="verdict" hidden>
+            <span id="verdictText"></span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="launch" class="primary">Launch</button>
+          <button id="harden" disabled>Move the pad</button>
+          <span class="pill" id="status">idle</span>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <header>
+          <span class="label">fixtures/lander/controller.js</span>
+          <span class="attempt" id="attemptTag">stock</span>
+        </header>
+        <pre id="code" class="code"></pre>
+
+        <footer>
+          <span class="label">the whole SDK surface</span>
+          <pre class="call">const run = await agent.send(brief, {
+  local: { customTools: { fly } },
+});
+
+for await (const m of run.stream()) { /* ... */ }
+await run.wait();</pre>
+        </footer>
+      </aside>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "freefall",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --import tsx src/server.ts",
+    "world-check": "node --env-file-if-exists=.env --import tsx scripts/world-check.ts",
+    "probe-hands": "node --env-file-if-exists=.env --import tsx scripts/probe-hands.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cursor/sdk": "latest",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.0",
+    "playwright": "^1.62.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
