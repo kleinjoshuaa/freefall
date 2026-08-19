@@ -28,28 +28,71 @@ export const WORLD_CEILING = 300;
 /** Landing gear length: contact happens here, not at y=0 exactly. */
 export const GEAR = 0.5;
 
+/** Lunar baseline. Kept as the calm act so the first controller is learned there. */
+export const LUNAR_GRAVITY = 1.62;
+
 const CONDITIONS: Record<ConditionsName, Conditions> = {
   calm: {
     name: "calm",
-    gravity: 1.62,
+    gravity: LUNAR_GRAVITY,
     wind: 0,
     padX: 0,
     start: { t: 0, x: -45, y: 80, vx: 6, vy: -2, angleDeg: 0, fuel: 120 },
   },
-  // The drama comes from the stale autopilot flying away from the pad, not from
-  // the pad being hard to reach. Starting beside it keeps act two winnable while
-  // making the miss enormous and obvious.
-  shifted: {
-    name: "shifted",
-    gravity: 1.62,
-    wind: 0.3,
-    padX: 50,
-    start: { t: 0, x: 45, y: 90, vx: -2, vy: -2, angleDeg: 0, fuel: 110 },
+  // Every moved scenario starts the lander tens of metres to one side of the
+  // pad. A launch point above the pad makes the relocation invisible: the stale
+  // autopilot would fly a plausible-looking approach and the audience would have
+  // to read the miss number to know anything changed.
+  //
+  // Gravity and wind both shift so "Move the pad" changes more than one number.
+  // Values stay under MAX_THRUST_ACCEL so a retargeted controller can still hover.
+  "moved-east": {
+    name: "moved-east",
+    gravity: 1.35,
+    wind: 0.12,
+    padX: 44,
+    start: { t: 0, x: 2, y: 92, vx: 3, vy: -2, angleDeg: 0, fuel: 130 },
+  },
+  "moved-west": {
+    name: "moved-west",
+    gravity: 1.9,
+    wind: -0.12,
+    padX: -46,
+    start: { t: 0, x: -4, y: 88, vx: -3, vy: -2, angleDeg: 0, fuel: 130 },
+  },
+  "moved-crosswind": {
+    name: "moved-crosswind",
+    gravity: 2.1,
+    wind: 0.22,
+    padX: 18,
+    start: { t: 0, x: -34, y: 96, vx: 2, vy: -2, angleDeg: 0, fuel: 140 },
   },
 };
 
 export function conditions(name: ConditionsName): Conditions {
   return CONDITIONS[name];
+}
+
+/**
+ * Cycled in order rather than sampled at random. "Move the pad" has to look
+ * different every press *and* be winnable every press; unbounded randomness
+ * buys the first at the cost of the second, and the failure only shows up live.
+ */
+export const MOVED_CONDITIONS = [
+  "moved-east",
+  "moved-west",
+  "moved-crosswind",
+] as const satisfies readonly ConditionsName[];
+
+/** `moveIndex` is 0-based: the first press of "Move the pad" is 0. */
+export function movedConditions(moveIndex: number): Conditions {
+  const n = MOVED_CONDITIONS.length;
+  return conditions(MOVED_CONDITIONS[((moveIndex % n) + n) % n]);
+}
+
+/** Horizontal gap between launch point and pad centre, in metres. */
+export function launchOffset(world: Conditions): number {
+  return Math.abs(world.start.x - world.padX);
 }
 
 const clamp = (v: number, lo: number, hi: number): number =>

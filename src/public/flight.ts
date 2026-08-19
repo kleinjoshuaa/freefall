@@ -15,13 +15,20 @@ import { asAttemptNo, asFlightId, asHangarRoot, parseApiKey } from "./types.js";
 import { createChannel } from "./channel.js";
 import {
   conditions,
+  movedConditions,
   PAD_HALF_WIDTH,
   SAFE_DESCENT,
   WORLD_CEILING,
   WORLD_HALF_WIDTH,
 } from "../world/physics.js";
 import { simulate } from "../world/simulate.js";
-import { buildFlyTool, CONTROLLER_PATH, STOCK_PATH } from "../pilot/tools.js";
+import {
+  buildFlyTool,
+  CONTROLLER_PATH,
+  createControllerRun,
+  STOCK_PATH,
+  type ControllerRun,
+} from "../pilot/tools.js";
 import { firstFlight, MISSION, relocated } from "../pilot/prompt.js";
 
 /**
@@ -33,7 +40,15 @@ import { firstFlight, MISSION, relocated } from "../pilot/prompt.js";
 const TOOLS = ["mcp"] as const;
 const DENIED = ["edit", "shell", "read", "grep", "glob", "ls"] as const;
 const MODEL = "composer-2.5";
-const MAX_ATTEMPTS = 10;
+
+/**
+ * Two budgets, not one. Landing is open-ended because a bad run needs room to
+ * recover; simplification is capped tight because it runs *after* the demo has
+ * already succeeded and every extra flight is time the room spends watching a
+ * green arc get shorter.
+ */
+const MAX_SOLVING_ATTEMPTS = 8;
+const OPTIMIZATION_ATTEMPTS = 3;
 
 const ARENA: Arena = {
   halfWidth: WORLD_HALF_WIDTH,
@@ -54,32 +69,31 @@ export type HangarOptions = {
   readonly cwd: string;
 };
 
+const newRun = (previouslyFlown?: string): ControllerRun =>
+  createControllerRun({
+    maxSolvingAttempts: MAX_SOLVING_ATTEMPTS,
+    optimizationAttempts: OPTIMIZATION_ATTEMPTS,
+    previouslyFlown,
+  });
+
 export async function openHangar(options: HangarOptions): Promise<Hangar> {
   const apiKey: ApiKey = parseApiKey(options.apiKey);
   const root: HangarRoot = asHangarRoot(options.cwd);
 
   let agent: SDKAgent | undefined;
   let world: Conditions = conditions("calm");
-  let landed = false;
-  let attempts = 0;
+  let moves = 0;
+  let run: ControllerRun = newRun();
+
+  let active: ReturnType<typeof createChannel<FlightEvent>> | undefined;
 
   const tools = () =>
     buildFlyTool({
       root,
       conditions: () => world,
-      emit: (event) => {
-        if (event.kind === "attempt_flown" || event.kind === "attempt_rejected") {
-          attempts += 1;
-        }
-        active?.emit(event);
-      },
-      onLanded: () => {
-        landed = true;
-      },
-      maxAttempts: MAX_ATTEMPTS,
+      run: () => run,
+      emit: (event) => active?.emit(event),
     });
-
-  let active: ReturnType<typeof createChannel<FlightEvent>> | undefined;
 
   const flyFile = async (
     relative: string,
@@ -117,7 +131,14 @@ export async function openHangar(options: HangarOptions): Promise<Hangar> {
     void (async () => {
       try {
         await body();
-        channel.emit({ kind: "flight_over", landed, attempts });
+        const snapshot = run.snapshot();
+        channel.emit({
+          kind: "flight_over",
+          landed: snapshot.kind !== "solving",
+          attempts: snapshot.attempts,
+          phase: snapshot.kind,
+          best: snapshot.kind === "solving" ? null : snapshot.best.measure,
+        });
       } catch (err) {
         if (err instanceof CursorAgentError) {
           channel.emit({
@@ -164,8 +185,10 @@ export async function openHangar(options: HangarOptions): Promise<Hangar> {
     launch(): AsyncIterable<FlightEvent> {
       const channel = createChannel<FlightEvent>();
       return drive(channel, async () => {
-        attempts = 0;
+        world = conditions("calm");
+        moves = 0;
         const stock = await flyStock();
+        run = newRun(stock.source);
 
         agent = await Agent.create({
           apiKey,
@@ -184,7 +207,9 @@ export async function openHangar(options: HangarOptions): Promise<Hangar> {
           source: stock.source,
         });
 
-        await pump(`${MISSION}\n\n${firstFlight(world)}`);
+        await pump(
+          `${MISSION}\n\n${firstFlight({ world, budget: MAX_SOLVING_ATTEMPTS, simplifications: OPTIMIZATION_ATTEMPTS })}`,
+        );
       });
     },
 
@@ -192,9 +217,22 @@ export async function openHangar(options: HangarOptions): Promise<Hangar> {
       const channel = createChannel<FlightEvent>();
       return drive(channel, async () => {
         if (!agent) throw new Error("launch() before harden()");
-        world = conditions("shifted");
-        landed = false;
-        attempts = 0;
+        const previous = world;
+        moves += 1;
+        world = movedConditions(moves - 1);
+
+        // Fly the unchanged autopilot against the moved pad so the miss is on
+        // screen before the agent has said anything. The same flight is handed
+        // to the agent as evidence — asking it to reproduce this would replay an
+        // identical arc the room just watched and burn a landing flight.
+        const stale = await flyCurrent();
+        run = newRun(stale.source);
+        channel.emit({
+          kind: "conditions_changed",
+          world,
+          baseline: stale.trajectory,
+          move: moves,
+        });
 
         // Neither tools nor disallowedTools survive a resume; both are re-passed.
         agent = await Agent.resume(agent.agentId, {
@@ -205,12 +243,15 @@ export async function openHangar(options: HangarOptions): Promise<Hangar> {
           local: { cwd: root, customTools: tools() },
         });
 
-        // Fly the unchanged autopilot against the moved pad so the miss is on
-        // screen before the agent has said anything.
-        const stale = await flyCurrent();
-        channel.emit({ kind: "conditions_changed", world, baseline: stale.trajectory });
-
-        await pump(relocated(world));
+        await pump(
+          relocated({
+            world,
+            previousPadX: previous.padX,
+            budget: MAX_SOLVING_ATTEMPTS,
+            simplifications: OPTIMIZATION_ATTEMPTS,
+            stale: stale.trajectory,
+          }),
+        );
       });
     },
 

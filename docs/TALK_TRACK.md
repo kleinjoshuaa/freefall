@@ -9,9 +9,9 @@ prints `NO-GO`, do not give the talk.
 
 ## 0:00 — The setup (before you click anything)
 
-> This is a lunar lander. That orange strip is the pad. The autopilot flying it
-> is fifteen lines of JavaScript in a real file on disk, and right now it holds a
-> fixed throttle and never steers.
+> This is a lander. That orange strip is the pad. The HUD shows pad position,
+> gravity, and wind. The autopilot flying it is fifteen lines of JavaScript in a
+> real file on disk, and right now it holds a fixed throttle and never steers.
 >
 > I'm not going to write the autopilot. An agent is.
 
@@ -62,23 +62,49 @@ screen with a score.
 
 > Three attempts. Nobody told it what was wrong — it read the telemetry.
 
+Point at the receipt panel, bottom right:
+
+> That's not my summary of the flight. That's the string the tool handed back,
+> laid out: outcome, miss distance, impact speed, fuel, and six waypoints from
+> the descent. That is the agent's entire feedback channel.
+
 Pause here. Let the fan of red arcs with one green line through it sit on screen.
 That image is the demo.
 
-## 1:20 — The second act
+## 1:15 — It doesn't stop at working
+
+The HUD chip flips from **SOLVING** to **SIMPLIFYING** and the flights keep
+coming.
+
+> Most demos stop here, because it works. This one has a second objective: keep
+> it landing, but make it shorter.
+
+Watch the `BEST` chip shrink as the code panel loses lines. When one gets
+refused, point at the receipt:
+
+> That one was shorter and it crashed, so it was thrown away — the file on disk
+> still holds the version that lands. Shorter only counts if it still lands. It
+> gets three tries, so this stays bounded, and the file ends up as the shortest
+> controller that actually flew.
+
+## 1:40 — The second act
 
 > Now the requirement changes.
 
 Click **Move the pad**.
 
-The pad jumps to the right and the unchanged autopilot flies its old, perfect,
-gentle approach — and sets down fifty metres from where it now needs to be.
+The pad relocates, gravity and wind change on the HUD, and the unchanged autopilot
+flies its old approach onto bare ground.
 
 > That's the same agent. Same conversation. `Agent.resume` picks the thread back
 > up, so it still has everything it learned in the first act. It isn't starting
 > over; it's editing code it remembers writing.
 
-Let it iterate. Second act usually takes 3–7 attempts.
+Let it iterate. Second act usually takes 3–7 attempts, then it simplifies again.
+
+If you have time, press **Move the pad** a second time. The scenarios cycle, so
+it's a different pad, a different launch point, and different gravity each press
+— there's no "and here's the same trick again" moment.
 
 ## 2:15 — Close
 
@@ -91,7 +117,9 @@ Let it iterate. Second act usually takes 3–7 attempts.
 >
 > Second, the interesting part isn't that it wrote code. It's that it wrote
 > code, watched it fail against a real system, and fixed it — three times, in
-> ninety seconds, without a human in the loop.
+> ninety seconds, without a human in the loop. And then, once it worked, it kept
+> going and made it smaller, because "it passes" and "it's good" aren't the same
+> acceptance test.
 
 ---
 
@@ -112,7 +140,8 @@ It usually lands in 2–4 attempts, but it is a live model and it can flail.
 
 **"Did it really write the file?"** Yes — `fixtures/lander/controller.js`, open
 it after. The tool persists the source only after it runs clean, so the file on
-disk is always something that actually flew.
+disk is always something that actually flew — and after the simplification
+phase, it's the shortest thing that landed.
 
 **"Why one tool?"** Round trips are the budget. One tool call equals one visible
 flight, which is the tightest feedback loop available in a three-minute demo.
@@ -123,4 +152,11 @@ attempt, and it demonstrates that tools execute in *your* process against
 *your* state.
 
 **"Is the physics rigged?"** `npm run world-check` proves the stock autopilot
-fails and a hand-written one lands, in both acts. Run it in front of them.
+fails and a hand-written one lands, in every scenario the pad can move to, and
+that none of them start the lander directly over the pad. Run it in front of
+them.
+
+**"What stops it from 'simplifying' into something broken?"** The tool decides,
+not the model. A candidate has to land *and* be smaller than the current best to
+be written to disk; identical resubmissions are refused as no-ops. `world-check`
+asserts those rules directly.

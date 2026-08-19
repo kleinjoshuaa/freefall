@@ -13,7 +13,17 @@
 
         <div class="overlay">
           <div class="titles">
-            <h1 id="act">FREEFALL</h1>
+            <div class="titleRow">
+              <h1 id="act">FREEFALL</h1>
+              <div class="hud">
+                <span class="chip" id="padChip">PAD x=0</span>
+                <span class="chip" id="gravityChip">G 1.62 m/s²</span>
+                <span class="chip" id="windChip">WIND 0 m/s²</span>
+                <span class="chip" id="phaseChip" hidden>SOLVING</span>
+                <span class="chip" id="sizeChip" hidden></span>
+                <span class="chip vel" id="velChip"></span>
+              </div>
+            </div>
             <p id="sub">The agent writes the autopilot. The lander flies it.</p>
           </div>
 
@@ -35,6 +45,19 @@
           <span class="attempt" id="attemptTag">stock</span>
         </header>
         <pre id="code" class="code"></pre>
+
+        <section class="receipt" id="receipt">
+          <header>
+            <span class="label">what the tool told the agent</span>
+            <span class="attempt" id="receiptTag">no flights yet</span>
+          </header>
+          <p class="outcome" id="receiptOutcome">
+            Telemetry from each flight appears here.
+          </p>
+          <div class="stats" id="receiptStats"></div>
+          <div class="profile" id="receiptProfile"></div>
+          <p class="opt" id="receiptOpt" hidden></p>
+        </section>
 
         <footer>
           <span class="label">the whole SDK surface</span>

@@ -6,7 +6,11 @@ export type AttemptNo = Brand<number, "AttemptNo">;
 export type ApiKey = Brand<string, "ApiKey">;
 export type HangarRoot = Brand<string, "HangarRoot">;
 
-export type ConditionsName = "calm" | "shifted";
+export type ConditionsName =
+  | "calm"
+  | "moved-east"
+  | "moved-west"
+  | "moved-crosswind";
 
 /**
  * One simulation tick. Flat scalars rather than nested vectors: this shape is
@@ -70,6 +74,46 @@ export type Trajectory = {
   readonly telemetry: Telemetry;
 };
 
+export type SourceMeasure = {
+  readonly bytes: number;
+  readonly lines: number;
+};
+
+export type OptimizationResult =
+  | "accepted"
+  | "failed"
+  | "identical"
+  | "not_shorter"
+  | "rejected";
+
+export type RunPhase = "solving" | "optimizing" | "done";
+
+export type OptimizationNote = {
+  readonly result: OptimizationResult;
+  readonly candidate: SourceMeasure;
+  readonly best: SourceMeasure;
+  readonly bestSource: string;
+  readonly attemptsRemaining: number;
+};
+
+/**
+ * The exact tool return value, decomposed. `text` is byte-for-byte what the
+ * model read; the parts beside it exist so the renderer can lay the same
+ * information out spatially instead of printing a paragraph. Anything shown on
+ * screen must come from this record, or the screen is telling a different story
+ * than the one the agent is reacting to.
+ */
+export type AttemptReceipt = {
+  readonly attempt: AttemptNo;
+  readonly phase: RunPhase;
+  readonly text: string;
+  readonly outcomeLine: string;
+  readonly profile: string;
+  /** Size of the accepted landing controller; null until something lands. */
+  readonly best: SourceMeasure | null;
+  readonly optimization: OptimizationNote | null;
+};
+
 /**
  * The public wire. Deliberately contains no SDK concepts: no run ids, no
  * message types, no tool-call shapes. A renderer can consume this without
@@ -90,21 +134,26 @@ export type FlightEvent =
       readonly trajectory: Trajectory;
       readonly source: string;
       readonly note: string;
+      readonly receipt: AttemptReceipt;
     }
   | {
       readonly kind: "attempt_rejected";
       readonly attempt: AttemptNo;
       readonly error: string;
+      readonly receipt: AttemptReceipt;
     }
   | {
       readonly kind: "conditions_changed";
       readonly world: Conditions;
       readonly baseline: Trajectory;
+      readonly move: number;
     }
   | {
       readonly kind: "flight_over";
       readonly landed: boolean;
       readonly attempts: number;
+      readonly phase: RunPhase;
+      readonly best: SourceMeasure | null;
     }
   | {
       readonly kind: "failed";

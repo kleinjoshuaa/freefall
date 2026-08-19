@@ -6,7 +6,9 @@
   --card-02: #201e18;
   --card-03: #26241e;
   --good: #4ade80;
+  --warn: #fbbf24;
   --bad: #f87171;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --dim: rgba(237, 236, 236, 0.6);
 }
 
@@ -51,6 +53,13 @@ body {
   justify-content: space-between;
 }
 
+/* Shrink-wraps the heading so the HUD can anchor to the title word itself,
+   which changes length between acts, rather than to the overlay edge. */
+.titleRow {
+  position: relative;
+  display: inline-block;
+}
+
 .titles h1 {
   margin: 0;
   font-size: 3.25rem;
@@ -59,9 +68,86 @@ body {
 }
 
 .titles p {
-  margin: 0.35rem 0 0;
+  margin: 0.8rem 0 0;
   color: var(--dim);
   font-size: 1.05rem;
+}
+
+/* Out of flow so chips appearing mid-run never reflow the title or subtitle. */
+.hud {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  top: 0.3rem;
+  /* Two fixed columns beside the title. Cells are assigned explicitly so the
+     optional chips leave a hole when hidden instead of shuffling the rest. */
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.2rem 0.4rem;
+}
+
+#padChip {
+  grid-area: 1 / 1;
+}
+
+#gravityChip {
+  grid-area: 2 / 1;
+}
+
+#windChip {
+  grid-area: 3 / 1;
+}
+
+#phaseChip {
+  grid-area: 1 / 2;
+}
+
+#sizeChip {
+  grid-area: 2 / 2;
+}
+
+#velChip {
+  grid-area: 3 / 2;
+}
+
+/* Preserves the padding that right-aligns the velocity digits. */
+.chip.vel {
+  white-space: pre;
+  color: var(--dim);
+}
+
+.chip {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.3rem;
+  border: 1px solid var(--card-03);
+  background: rgba(27, 25, 19, 0.72);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chip.windy {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip.heavy {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.chip.light {
+  border-color: #93c5fd;
+  color: #93c5fd;
+}
+
+.chip.simplifying {
+  border-color: var(--good);
+  color: var(--good);
 }
 
 .verdict {
@@ -138,6 +224,13 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Both control buttons take the longer label's footprint so they read as a
+   matched pair, and neither wraps when the world column narrows. */
+.controls button {
+  min-width: 10.5rem;
+  white-space: nowrap;
+}
+
 .pill {
   font-size: 0.9rem;
   color: var(--dim);
@@ -148,7 +241,7 @@ button:disabled {
   background: var(--card);
   border-left: 1px solid var(--card-03);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-width: 0;
 }
 
@@ -184,7 +277,7 @@ button:disabled {
 
 .code,
 .call {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-family: var(--mono);
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -212,5 +305,163 @@ button:disabled {
   margin-top: 0.6rem;
   font-size: 0.76rem;
   line-height: 1.5;
+  color: var(--dim);
+}
+
+/* ---- receipt -------------------------------------------------------------
+   Every value here is a substring of the tool's return value, so the layout
+   can only add separation and alignment, never reword. The panel is 30rem
+   wide, so each block wraps or shrinks rather than pushing the column. */
+
+.receipt {
+  padding: 0.9rem 1.25rem 1.1rem;
+  border-top: 1px solid var(--card-03);
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.receipt > header {
+  padding: 0 0 0.55rem;
+}
+
+.outcome {
+  margin: 0;
+  padding-left: 0.65rem;
+  border-left: 3px solid var(--card-03);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  /* The crash line carries `limits: speed<=2.5 drift<=1.5` and the stranded
+     line a full sentence; both must fold instead of running off the panel. */
+  overflow-wrap: anywhere;
+}
+
+.outcome.good {
+  border-left-color: var(--good);
+}
+.outcome.warn {
+  border-left-color: var(--warn);
+}
+.outcome.bad {
+  border-left-color: var(--bad);
+}
+
+/* Five terminal numbers, three across. Label sits above its value so neither
+   is truncated and the eye lands on the number, not the word. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.stats:empty,
+.profile:empty {
+  display: none;
+}
+
+.stats > div {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--card-03);
+  border-radius: 0.35rem;
+  background: var(--card-02);
+}
+
+.stats .k {
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.stats .v {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.4rem 0.55rem 0.5rem;
+  border: 1px solid var(--card-03);
+  border-radius: 0.35rem;
+  background: var(--card-02);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --cols is set per row from the field count the tool actually sent, so the
+   table still aligns if the profile ever carries a different set. */
+.wp {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.wp span {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wp.head {
+  margin-bottom: 0.15rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--card-03);
+}
+
+/* No letter-spacing: the trailing space it adds after the last character
+   would push each name off the right edge its column of numbers aligns to. */
+.wp.head span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.opt {
+  margin: 0;
+  padding-left: 0.65rem;
+  border-left: 3px solid var(--card-03);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.opt.accepted {
+  border-left-color: var(--good);
+}
+.opt.declined {
+  border-left-color: var(--dim);
+}
+
+.opt .word {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.opt.accepted .word {
+  color: var(--good);
+}
+.opt.declined .word {
+  color: var(--warn);
+}
+
+.opt .sizes {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
   color: var(--dim);
 }

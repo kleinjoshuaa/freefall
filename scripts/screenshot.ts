@@ -14,7 +14,7 @@ async function watch(page: Page, tag: string, budgetMs: number): Promise<void> {
   // The previous act's terminal status is still on screen when this one starts.
   // Passed as a string so this file does not need DOM lib types.
   await page.waitForFunction(
-    `!/landed in|gave up/.test(document.getElementById("status").textContent)`,
+    `!/^landed ·|gave up/.test(document.getElementById("status").textContent)`,
     undefined,
     { timeout: 10_000 },
   );
@@ -26,7 +26,7 @@ async function watch(page: Page, tag: string, budgetMs: number): Promise<void> {
       await shoot(page, `${tag}-${String(shot * 15).padStart(2, "0")}s`);
       shot += 1;
     }
-    if (/landed in|gave up|failed|error/.test(status)) {
+    if (/^landed ·|gave up|failed|error/.test(status)) {
       await page.waitForTimeout(2500);
       await shoot(page, `${tag}-final`);
       return;

@@ -7,8 +7,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "node --env-file-if-exists=.env --import tsx src/server.ts",
+    "dev": "tsx watch --clear-screen=false --env-file-if-exists=.env src/server.ts",
     "world-check": "node --env-file-if-exists=.env --import tsx scripts/world-check.ts",
+    "render-check": "node --import tsx scripts/render-check.ts",
     "probe-hands": "node --env-file-if-exists=.env --import tsx scripts/probe-hands.ts",
     "typecheck": "tsc --noEmit"
   },
